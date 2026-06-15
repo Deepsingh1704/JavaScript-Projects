@@ -6,16 +6,21 @@ const modal = document.querySelector(".modal");
 const startGameModal = document.querySelector(".start-game")
 const gameOverModal = document.querySelector(".game-over")
 const restartButton = document.querySelector(".btn-restart")
-const blockWidth = 50;
-const blockHeight = 50;
+const timeElement = document.querySelector("#time");
+
+const blockWidth = 30;
+const blockHeight = 30;
 
 const cols = Math.floor(board.clientWidth / blockWidth);
 const rows = Math.floor(board.clientHeight / blockHeight);
-
+let timerIntervalId = null;
 let intervalId = null;
 let food = { x: Math.floor(Math.random() * rows), y: Math.floor(Math.random() * cols) }
 let score = 0;
-let highScore = 0;
+let time = `00:00`
+
+let highScore = localStorage.getItem("highScore") || 0;
+highScoreElement.innerText = highScore;
 // Store blocks using x,y coordinates
 const blocks = [];
 
@@ -52,28 +57,34 @@ const render = () => {
     // food is eaten or not
 
     if (head.x == food.x && head.y == food.y) {
-        score++;
-        scoreElement.innerText = score;
+
         blocks[`${food.x},${food.y}`].classList.remove("food");
         food = { x: Math.floor(Math.random() * rows), y: Math.floor(Math.random() * cols) }
         blocks[`${food.x},${food.y}`].classList.add("food");
-        console.log(head);
         snake.unshift(head);
+        score++;
+        scoreElement.innerText = score;
+        //highscore feature
+        if (score > highScore) {
+            highScore = score;
+            localStorage.setItem('highScore', highScore.toString());
+            highScoreElement.innerText = highScore;
+        }
     }
 
     //game over condition 
     if (head.x < 0 || head.x >= rows || head.y < 0 || head.y >= cols) {
-        // alert("Game Over");
         clearInterval(intervalId);
-        // highScore = Math.max(score, highScore);
-        // highScoreElement.innerText = highScore;
+        clearInterval(timerIntervalId)
         modal.style.display = "flex"
         startGameModal.style.display = "none";
         gameOverModal.style.display = "flex";
+        highScoreElement.innerText = highScore;
+        time = "00:00";
+        timeElement.innerText = time;
         return
 
     }
-
 
     snake.forEach(segment => {
         blocks[`${segment.x},${segment.y}`].classList.remove("fill");
@@ -92,16 +103,35 @@ let direction = "up";
 // direction controls 
 
 addEventListener("keydown", (e) => {
-    if (event.key == "ArrowLeft") {
+    if (e.key === "ArrowLeft" && direction !== "right") {
         direction = "left";
-    } else if (event.key == "ArrowRight") {
+    }
+    else if (e.key === "ArrowRight" && direction !== "left") {
         direction = "right";
-    } else if (event.key == "ArrowUp") {
+    }
+    else if (e.key === "ArrowUp" && direction !== "down") {
         direction = "up";
-    } else if (event.key == "ArrowDown") {
+    }
+    else if (e.key === "ArrowDown" && direction !== "up") {
         direction = "down";
     }
 })
+
+// startTimer function logic 
+const startTimer = () => {
+    timerIntervalId = setInterval(() => {
+        let [min, sec] = time.split(":").map(Number)
+        if (sec == 59) {
+            min += 1;
+            sec = 0;
+        } else {
+            sec += 1;
+        }
+        time = `${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+        timeElement.innerText = time;
+    }, 1000)
+}
+
 
 //start the game
 startButton.addEventListener("click", () => {
@@ -109,11 +139,14 @@ startButton.addEventListener("click", () => {
     intervalId = setInterval(() => {
         render();
     }, 300)
+    startTimer();
 })
 
 //restart the game
 
 const restartGame = () => {
+    clearInterval(intervalId);
+    clearInterval(timerIntervalId)
     blocks[`${food.x},${food.y}`].classList.remove("food");
     snake.forEach((segment) => {
         blocks[`${segment.x},${segment.y}`].classList.remove("fill");
@@ -125,6 +158,11 @@ const restartGame = () => {
     intervalId = setInterval(() => {
         render();
     }, 300)
+    score = 0;
+    time = `00:00`
+    timeElement.innerText = time;
+    scoreElement.innerText = score;
+    startTimer();
 }
 
 restartButton.addEventListener("click", restartGame)
